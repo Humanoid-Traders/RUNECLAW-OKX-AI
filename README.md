@@ -127,13 +127,18 @@ skill points the agent at the MCP server above and fronts the analysis only; the
 is no execution path. See [`skills/README.md`](skills/README.md) for the format,
 distribution (`npx skills add okx/<pack>`), and the open submission questions.
 
-### OKX AI registration (PR 4 — not yet wired)
+### OKX AI A2MCP registration artifacts (PR 4)
 
-Listing on OKX AI as an **ASP → Agent-to-MCP** provider additionally requires a
-registration manifest and **OKX Payment SDK integration** for the pay-per-call
-billing. That payment surface (a receiving address / wallet) is **out of scope
-here** and crosses the plan's "no wallet surface" line — it needs its own risk
-review before going live (see `vendor/runeclaw/docs/OKX_AI_MCP_INTEGRATION.md` §5/§7).
+[`okx-ai/`](okx-ai/) holds the registration-ready artifacts for listing as an
+**ASP → Agent-to-MCP** provider: a generated [`manifest.json`](okx-ai/manifest.json)
+(service descriptor + per-call pricing + the nine tool schemas) and an
+**off-by-default OKX Payment SDK seam** in the HTTP transport (`PaymentVerifier` /
+`PaymentASGIMiddleware` → HTTP 402; `MCP_REQUIRE_PAYMENT` fails closed without a
+verifier). These are **repo-side only** — no wallet, no live registration. The
+actual wallet login + ASP registration is an operator step on an OKX-connected
+agent; see [`okx-ai/README.md`](okx-ai/README.md). The payment/wallet surface
+crosses the plan's "no wallet surface" line and needs a risk review before going
+live (`vendor/runeclaw/docs/OKX_AI_MCP_INTEGRATION.md` §5/§7).
 
 ## Test
 
