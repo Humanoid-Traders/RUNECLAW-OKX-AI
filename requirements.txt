@@ -8,5 +8,7 @@
 #
 # RUNECLAW's own runtime requirements (engine, skills, risk):
 -r vendor/runeclaw/bot/requirements.txt
-# Official MCP SDK for the stdio transport:
+# Official MCP SDK for the stdio transport (also pulls in Starlette + httpx):
 mcp>=1.0.0
+# ASGI server for the streamable-HTTP transport (runeclaw_okx/http_transport.py):
+uvicorn[standard]>=0.30.0

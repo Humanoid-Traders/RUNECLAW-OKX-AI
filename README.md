@@ -9,9 +9,10 @@ OpenClaw) — over stdio.
 > safety* window into RUNECLAW's brain. It **cannot** place, size, or confirm a
 > live trade. No wallet, on-chain, or stablecoin-settlement surface is involved.
 
-This implements **PR 1 + PR 2** of the plan in
+This implements **PR 1–3** of the plan in
 [`vendor/runeclaw/docs/OKX_AI_MCP_INTEGRATION.md`](vendor/runeclaw/docs/OKX_AI_MCP_INTEGRATION.md):
-the stdio transport adapter plus the analysis-only invariant and fail-closed auth.
+the stdio transport adapter, the analysis-only invariant and fail-closed auth, and
+the streamable-HTTP transport for a network-reachable endpoint.
 
 ## How it relates to RUNECLAW
 
@@ -85,6 +86,44 @@ Point any stdio MCP client at that command. Example client config:
   }
 }
 ```
+
+### Streamable-HTTP transport (network endpoint)
+
+For a hosted, network-reachable endpoint (e.g. OKX AI's Agent-to-MCP, pay-per-call
+model), serve the same read-only tools over streamable HTTP:
+
+```bash
+export MCP_AUTH_TOKEN="$(openssl rand -hex 32)"
+python -m runeclaw_okx.transport --transport http --host 127.0.0.1 --port 8765
+```
+
+- **`GET /healthz`** — unauthenticated liveness probe (`{"status":"ok"}`).
+- **`/mcp`** — the MCP streamable-HTTP endpoint. Every request requires
+  `Authorization: Bearer $MCP_AUTH_TOKEN` (hmac-compared, fail-closed → 401) and is
+  rate-limited per token (→ 429 with `Retry-After`).
+
+| Env var | Default | Purpose |
+|---|---|---|
+| `MCP_AUTH_TOKEN` | *(required)* | Bearer token; server refuses to start without it. |
+| `MCP_HTTP_HOST` / `--host` | `127.0.0.1` | Bind address. **Keep on localhost.** |
+| `MCP_HTTP_PORT` / `--port` | `8765` | Bind port. |
+| `MCP_HTTP_RPM` / `--rpm` | `120` | Per-token requests/minute. |
+| `MCP_HTTP_ALLOWED_HOSTS` | localhost | Comma-separated `Host` allow-list (DNS-rebinding protection). |
+| `MCP_HTTP_ALLOWED_ORIGINS` | *(none)* | Comma-separated `Origin` allow-list. |
+
+**Bind localhost; terminate TLS at a reverse proxy.** The server binds `127.0.0.1`
+by default and does not speak TLS. For a public endpoint, front it with nginx/Caddy
+handling TLS and forwarding to `127.0.0.1:8765`, and add the public hostname to
+`MCP_HTTP_ALLOWED_HOSTS`. Issue a **dedicated** token for the public endpoint
+(distinct from any internal one) and rotate it.
+
+### OKX AI registration (PR 4 — not yet wired)
+
+Listing on OKX AI as an **ASP → Agent-to-MCP** provider additionally requires a
+registration manifest and **OKX Payment SDK integration** for the pay-per-call
+billing. That payment surface (a receiving address / wallet) is **out of scope
+here** and crosses the plan's "no wallet surface" line — it needs its own risk
+review before going live (see `vendor/runeclaw/docs/OKX_AI_MCP_INTEGRATION.md` §5/§7).
 
 ## Test
 
