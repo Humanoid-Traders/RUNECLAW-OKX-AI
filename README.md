@@ -37,9 +37,21 @@ MCP client ──stdio──▶ runeclaw_okx.transport  (official mcp SDK Server
 
 ## Exposed tools (all read-only)
 
-`runeclaw_scan`, `runeclaw_analyze`, `runeclaw_risk`, `runeclaw_portfolio`,
-`runeclaw_explain`, `runeclaw_macro`, `runeclaw_shield` (21 fail-closed risk
-checks), `runeclaw_fullscan`, `runeclaw_backtest`. There is **no** `runeclaw_execute`.
+**Base (RUNECLAW's catalogue):** `runeclaw_scan`, `runeclaw_analyze`,
+`runeclaw_risk`, `runeclaw_portfolio`, `runeclaw_explain`, `runeclaw_macro`,
+`runeclaw_shield` (RUNECLAW Shield's fail-closed pre-trade risk checks — 23 in the
+current engine; the served tool description still says 21, see
+[`docs/OKX_OPPORTUNITIES.md`](docs/OKX_OPPORTUNITIES.md)), `runeclaw_fullscan`,
+`runeclaw_backtest`.
+
+**Extended (layered in by this repo, `runeclaw_okx/extended_server.py`):**
+`runeclaw_quant` (regime / GARCH vol / Hurst / edge-gate), `runeclaw_walkforward`
+(overfit-aware backtest validation), `runeclaw_whynot`, `runeclaw_event_risk`,
+`runeclaw_macro_brief`, `runeclaw_rejected`, `runeclaw_patterns`.
+
+16 read-only tools in total. There is **no** `runeclaw_execute`, and a pure
+analysis-only invariant test guarantees no tool (base or extended) can map to an
+execution skill.
 
 ## Analysis-only enforcement (defence in depth)
 

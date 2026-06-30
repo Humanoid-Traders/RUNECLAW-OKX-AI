@@ -108,7 +108,8 @@ def build_server(rc_server: Any | None = None) -> tuple[Any, Any]:
         ) from exc
 
     try:
-        from bot.mcp.server import RuneClawMCPServer
+        from runeclaw_okx.extended_server import build_extended_server
+        rc = build_extended_server(rc_server)
     except ImportError as exc:  # pragma: no cover - exercised only without RUNECLAW
         raise RuntimeError(
             "The RUNECLAW package is not importable. Initialise the submodule "
@@ -116,7 +117,6 @@ def build_server(rc_server: Any | None = None) -> tuple[Any, Any]:
             "conftest / PYTHONPATH must include `vendor/runeclaw`."
         ) from exc
 
-    rc = rc_server or RuneClawMCPServer()
     server = Server(SERVER_NAME)
 
     @server.list_tools()

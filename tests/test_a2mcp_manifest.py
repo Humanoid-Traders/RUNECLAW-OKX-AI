@@ -42,13 +42,20 @@ class TestManifestShape:
         assert m["service"]["pricing"]["model"] == "per_call"
         assert m["service"]["pricing"]["settlement"] == "okx-payment-sdk"
 
-    def test_has_nine_tools_all_readonly_with_price(self):
+    def test_all_tools_readonly_with_price(self):
         tools = _load_manifest()["service"]["tools"]
-        assert len(tools) == 9
+        assert len(tools) >= 9  # 9 base + extended read-only tools
         for t in tools:
             assert {"name", "description", "inputSchema", "price", "readOnly"} <= set(t)
             assert t["readOnly"] is True
             assert isinstance(t["price"], str) and t["price"]
+
+    def test_includes_the_extended_readonly_tools(self):
+        from runeclaw_okx.extended_server import EXTENDED_TOOLS
+
+        names = {t["name"] for t in _load_manifest()["service"]["tools"]}
+        for t in EXTENDED_TOOLS:
+            assert t["mcp_name"] in names
 
     def test_no_execution_tool_listed(self):
         names = [t["name"] for t in _load_manifest()["service"]["tools"]]
@@ -63,9 +70,13 @@ class TestManifestShape:
 class TestManifestMatchesCatalogue:
     def test_tool_names_match_catalogue(self):
         server = pytest.importorskip("bot.mcp.server")
-        catalogue = {t.mcp_name for t in server.TOOL_CATALOGUE}
+        from runeclaw_okx.extended_server import EXTENDED_TOOLS
+
+        expected = {t.mcp_name for t in server.TOOL_CATALOGUE} | {
+            t["mcp_name"] for t in EXTENDED_TOOLS
+        }
         manifest_names = {t["name"] for t in _load_manifest()["service"]["tools"]}
-        assert manifest_names == catalogue
+        assert manifest_names == expected
 
     def test_manifest_is_not_stale(self):
         pytest.importorskip("bot.mcp.server")
