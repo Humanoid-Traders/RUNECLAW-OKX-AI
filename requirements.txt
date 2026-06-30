@@ -1,0 +1,12 @@
+# Runtime dependencies for the RUNECLAW → OKX AI analysis-only MCP transport.
+#
+# The adapter wraps RUNECLAW, which is pinned as a git submodule under
+# vendor/runeclaw (the single source of truth — never duplicated or modified
+# here). Initialise it before installing:
+#
+#     git submodule update --init --recursive
+#
+# RUNECLAW's own runtime requirements (engine, skills, risk):
+-r vendor/runeclaw/bot/requirements.txt
+# Official MCP SDK for the stdio transport:
+mcp>=1.0.0

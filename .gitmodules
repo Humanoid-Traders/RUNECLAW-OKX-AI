@@ -1,0 +1,3 @@
+[submodule "vendor/runeclaw"]
+	path = vendor/runeclaw
+	url = https://github.com/Humanoid-Traders/RUNECLAW.git
