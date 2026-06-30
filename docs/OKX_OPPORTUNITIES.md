@@ -24,7 +24,7 @@ RUNECLAW today **consumes Bitget data** and **exposes analysis**. OKX adds:
 |---|---|---|---|---|---|---|
 | **A** | Expose hidden read-only tools | quant report, walk-forward, whynot, macro briefs, rejections, patterns | A2MCP tools + skills + manifest | Per-call | Low | Low — **done this round** |
 | **B** | Shield-as-a-Service | 23-check fail-closed risk verdict oracle | A2MCP, priced | Recurring per-call | Low | Low |
-| **C** | Analyze OKX / on-chain markets | pattern + microstructure + quant stack | consume `okx-dex-market` / `okx-dex-signal` | Expands TAM | Med | ⚠️ data-redistribution clause |
+| **C** | Analyze OKX / on-chain markets | pattern + microstructure + quant stack | consume OKX public market data | Expands TAM | Med | ⚠️ data-redistribution clause — **CEX leg done** |
 | **D** | A2A escrow deliverables | custom backtests, walk-forward of a user strategy, "red-team my strategy" (`red_team.py`) | A2A escrow on X Layer | Per-deliverable | Med | Med — needs wallet |
 | **E** | Verifiable analysis | SHA-256 + Ed25519 audit chain | trust layer for disputes/Evaluators | Premium tier | Med | Low |
 | **F** | Evaluator node | `critique.py` + `red_team.py` + Shield as adjudicator | Evaluator role, stake OKB | Arbitration bounties | High | High — opaque economics |
@@ -71,11 +71,27 @@ untouched here; a small RUNECLAW PR should reconcile the two stale strings to 23
 Our skill/docs reference the engine truth and note the served description still says
 21 until that lands.
 
+## Opportunity C — OKX data adapter (CEX leg built)
+
+`runeclaw_okx/okx_data.py` fetches OKX's **public CEX market data** (`/api/v5/market/
+candles`, no API key) and runs RUNECLAW's stateless analysis on it, exposed as two
+read-only tools — `runeclaw_okx_quant` (quant report) and `runeclaw_okx_backtest`
+(rule-based strategy backtest). RUNECLAW now analyses **OKX** markets, not just
+Bitget.
+
+**Data-clause compliance, by construction:** the tools return RUNECLAW's *derived*
+output (a quant report / backtest metrics) and **never echo the raw OKX candles** —
+a test asserts the response carries no `candles`/`ohlcv`. This stays on the safe
+side of OKX's redistribution terms (derived signals OK; raw pass-through needs
+consent). Remaining for C: the **DEX/on-chain leg** (`okx-dex-signal` smart-money,
+`okx-dex-market` OHLC) needs an OKX Developer-Portal API key and the same
+derived-only discipline.
+
 ## Suggested next steps (in order)
 
 1. **Reconcile the Shield count** upstream in RUNECLAW (small, correctness).
-2. **Opportunity C — OKX data adapter** (read-only): let the analyzer/quant/Shield run
-   on OKX DEX/CEX symbols, emitting *derived* signals only (respect the data clause).
+2. **Opportunity C — DEX leg**: add the keyed OKX DEX data sources (smart-money /
+   on-chain OHLC) behind the same derived-only adapter.
 3. **Opportunity E — signed attestation endpoint** surfacing the audit chain, for a
    "verifiable analysis" premium tier that fits the dispute/Evaluator economy.
 4. **Live monetization (B/D/F)** — only after the wallet/payment risk review:
