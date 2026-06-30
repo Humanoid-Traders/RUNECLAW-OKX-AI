@@ -66,6 +66,7 @@ class TestExtendedServer:
     def test_list_tools_includes_base_and_extended(self, monkeypatch):
         import asyncio
 
+        from runeclaw_okx.attestation import ATTEST_TOOLS
         from runeclaw_okx.okx_data import OKX_DATA_TOOLS
 
         srv, mcp_server, _ = self._server(monkeypatch)
@@ -73,8 +74,9 @@ class TestExtendedServer:
         base = {t.mcp_name for t in mcp_server.TOOL_CATALOGUE}
         extended = {t["mcp_name"] for t in ext.EXTENDED_TOOLS}
         okx = {t["mcp_name"] for t in OKX_DATA_TOOLS}
-        assert base <= names and extended <= names and okx <= names
-        assert len(names) == len(base | extended | okx)
+        attest = {t["mcp_name"] for t in ATTEST_TOOLS}
+        assert base <= names and extended <= names and okx <= names and attest <= names
+        assert len(names) == len(base | extended | okx | attest)
         assert "runeclaw_execute" not in names
         assert not any("execute" in n.lower() for n in names)
 
