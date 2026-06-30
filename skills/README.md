@@ -7,7 +7,7 @@ discover and use them in natural language. This implements **PR 5** of
 
 | Skill | Fronts MCP tool | What it does |
 |---|---|---|
-| [`runeclaw-shield`](runeclaw-shield/SKILL.md) | `runeclaw_shield` | Fail-closed pre-trade risk checks (23 in-engine) → approved/rejected verdict |
+| [`runeclaw-shield`](runeclaw-shield/SKILL.md) | `runeclaw_shield` | 23 fail-closed pre-trade risk checks → approved/rejected verdict |
 | [`runeclaw-analyze`](runeclaw-analyze/SKILL.md) | `runeclaw_analyze` | Turn a symbol into a structured trade idea |
 | [`runeclaw-quant`](runeclaw-quant/SKILL.md) | `runeclaw_quant` | Regime / GARCH vol / Hurst / edge-gate quant report |
 

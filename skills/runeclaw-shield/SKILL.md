@@ -1,14 +1,13 @@
 ---
 name: runeclaw-shield
-description: Run RUNECLAW Shield — its fail-closed pre-trade risk checks (23 in the current engine) — on a proposed crypto trade (symbol, direction, entry, stop-loss, take-profit, confidence) and get an immutable approved/rejected verdict with per-check detail and a suggested position size. Use it before acting on any trade idea to validate risk/reward, stop placement, drawdown and circuit-breaker state. Read-only and analysis-only — it evaluates a proposal and returns a safety decision; it never places, sizes for execution, or confirms a live order.
+description: Run RUNECLAW Shield — 23 fail-closed pre-trade risk checks — on a proposed crypto trade (symbol, direction, entry, stop-loss, take-profit, confidence) and get an immutable approved/rejected verdict with per-check detail and a suggested position size. Use it before acting on any trade idea to validate risk/reward, stop placement, drawdown and circuit-breaker state. Read-only and analysis-only — it evaluates a proposal and returns a safety decision; it never places, sizes for execution, or confirms a live order.
 ---
 
 # RUNECLAW Shield (analysis-only risk gate)
 
 RUNECLAW Shield is a safety service: hand it a proposed trade and it returns an
-immutable **approved / rejected** verdict from its fail-closed risk checks (23 in
-the current engine). It is read-only — it judges a proposal, it does not execute
-anything.
+immutable **approved / rejected** verdict from 23 fail-closed risk checks. It is
+read-only — it judges a proposal, it does not execute anything.
 
 ## When to use
 
