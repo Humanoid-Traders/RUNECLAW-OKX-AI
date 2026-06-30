@@ -41,6 +41,8 @@ _PER_TOOL_PRICE = {
     # OKX-data tools fetch + compute; price them like the heavier analyses.
     "runeclaw_okx_quant": "0.05",
     "runeclaw_okx_backtest": "0.05",
+    # Verifiable-analysis tier: a signed receipt carries a small premium.
+    "runeclaw_signed": "0.02",
 }
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -56,6 +58,7 @@ for _p in (_ROOT, os.path.join(_ROOT, "vendor", "runeclaw")):
 def build_manifest() -> dict:
     from bot.mcp.server import MCPToolDef, MCPToolParam, RuneClawMCPServer, TOOL_CATALOGUE
 
+    from runeclaw_okx.attestation import ATTEST_TOOLS
     from runeclaw_okx.extended_server import EXTENDED_TOOLS, assert_extended_readonly
     from runeclaw_okx.okx_data import OKX_DATA_TOOLS
 
@@ -65,14 +68,19 @@ def build_manifest() -> dict:
         return tuple(
             MCPToolDef(
                 mcp_name=t["mcp_name"],
-                skill_name=t["skill_name"],
+                skill_name=t.get("skill_name", "_" + t["mcp_name"]),
                 description=t["description"],
                 params=tuple(MCPToolParam(**p) for p in t["params"]),
             )
             for t in catalogue
         )
 
-    all_defs = tuple(TOOL_CATALOGUE) + _to_defs(EXTENDED_TOOLS) + _to_defs(OKX_DATA_TOOLS)
+    all_defs = (
+        tuple(TOOL_CATALOGUE)
+        + _to_defs(EXTENDED_TOOLS)
+        + _to_defs(OKX_DATA_TOOLS)
+        + _to_defs(ATTEST_TOOLS)
+    )
 
     tools = []
     for tdef in all_defs:
@@ -119,6 +127,16 @@ def build_manifest() -> dict:
                 "currency": "USDC",
                 "defaultPrice": _DEFAULT_PRICE,
                 "settlement": "okx-payment-sdk",
+            },
+            "provenance": {
+                "scheme": "ed25519",
+                "signedResults": "runeclaw_signed",
+                "publicKeyTool": "runeclaw_attest_key",
+                "note": (
+                    "Results can be returned with an Ed25519 signature over "
+                    "{request, response}; fetch the public key + verify recipe from "
+                    "runeclaw_attest_key. Key is per-deployment (set MCP_ATTEST_PRIVATE_KEY)."
+                ),
             },
             "tools": tools,
         },

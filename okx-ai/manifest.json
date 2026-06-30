@@ -23,6 +23,12 @@
       "defaultPrice": "0.01",
       "settlement": "okx-payment-sdk"
     },
+    "provenance": {
+      "scheme": "ed25519",
+      "signedResults": "runeclaw_signed",
+      "publicKeyTool": "runeclaw_attest_key",
+      "note": "Results can be returned with an Ed25519 signature over {request, response}; fetch the public key + verify recipe from runeclaw_attest_key. Key is per-deployment (set MCP_ATTEST_PRIVATE_KEY)."
+    },
     "tools": [
       {
         "name": "runeclaw_scan",
@@ -366,6 +372,40 @@
           "additionalProperties": false
         },
         "price": "0.05",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_attest_key",
+        "description": "Return the server's Ed25519 attestation public key, key id, and the verification recipe, so callers can independently verify signed analysis. Read-only.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_signed",
+        "description": "Run any read-only analysis tool and return its result together with an Ed25519 signature over {request, response} — a portable, independently verifiable receipt that RUNECLAW produced exactly this output. Read-only.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "description": "The read-only tool to run, e.g. 'runeclaw_shield'."
+            },
+            "arguments": {
+              "type": "object",
+              "description": "Arguments object for the inner tool (optional)."
+            }
+          },
+          "required": [
+            "tool"
+          ],
+          "additionalProperties": false
+        },
+        "price": "0.02",
         "readOnly": true
       }
     ]

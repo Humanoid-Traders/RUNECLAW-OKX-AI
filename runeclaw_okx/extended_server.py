@@ -17,8 +17,15 @@ if any extended tool ever points at an execution/state-mutating skill.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
+from runeclaw_okx.attestation import (
+    ATTEST_TOOL_NAMES,
+    ATTEST_TOOLS,
+    assert_attest_readonly,
+    get_attestor,
+)
 from runeclaw_okx.okx_data import (
     OKX_DATA_TOOLS,
     assert_okx_readonly,
@@ -210,8 +217,9 @@ def assert_extended_readonly() -> None:
             raise RuntimeError(
                 f"Extended tool '{name}' maps to non-allow-listed skill '{skill}'"
             )
-    # The OKX-data tools are read-only by construction; validate them too.
+    # The OKX-data and attestation tools are read-only by construction; validate too.
     assert_okx_readonly()
+    assert_attest_readonly()
 
 
 def build_extended_server(rc_server: Any | None = None) -> Any:
@@ -227,16 +235,19 @@ def build_extended_server(rc_server: Any | None = None) -> Any:
     def _to_defs(catalogue: tuple[dict[str, Any], ...]) -> tuple[Any, ...]:
         return tuple(
             MCPToolDef(
+                # Attestation meta-tools have no backing skill; they're handled in
+                # the call_tool override, so use a placeholder skill_name.
                 mcp_name=t["mcp_name"],
-                skill_name=t["skill_name"],
+                skill_name=t.get("skill_name", "_" + t["mcp_name"]),
                 description=t["description"],
                 params=tuple(MCPToolParam(**p) for p in t["params"]),
             )
             for t in catalogue
         )
 
-    defs = _to_defs(EXTENDED_TOOLS) + _to_defs(OKX_DATA_TOOLS)
+    defs = _to_defs(EXTENDED_TOOLS) + _to_defs(OKX_DATA_TOOLS) + _to_defs(ATTEST_TOOLS)
     okx_skills = okx_skill_instances()
+    MCPResponse = __import__("bot.mcp.server", fromlist=["MCPResponse"]).MCPResponse
 
     class _ExtendedRuneClawMCPServer(RuneClawMCPServer):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -267,7 +278,58 @@ def build_extended_server(rc_server: Any | None = None) -> Any:
                         args[key] = max(lo, min(int(args[key]), hi))
                     except (ValueError, TypeError):
                         pass  # base call_tool returns a structured type error
+            if name in ATTEST_TOOL_NAMES:
+                return await self._handle_attest(name, args, auth_token)
             return await super().call_tool(name, args, auth_token=auth_token)
+
+        async def _handle_attest(
+            self, name: str, args: dict[str, Any], auth_token: str | None
+        ) -> dict[str, Any]:
+            # Same fail-closed auth as every other tool (the meta-tools bypass the
+            # skill path, so the check is replicated here).
+            import hmac
+
+            import bot.mcp.server as _mcp
+
+            if not auth_token or not hmac.compare_digest(auth_token, _mcp._MCP_AUTH_TOKEN):
+                return MCPResponse(
+                    status="error", tool=name,
+                    result="Authentication required. Provide a valid auth_token.",
+                ).to_dict()
+
+            attestor = get_attestor()
+            if name == "runeclaw_attest_key":
+                return MCPResponse(
+                    status="success", tool=name, result=json.dumps(attestor.key_info())
+                ).to_dict()
+
+            # runeclaw_signed: run a read-only tool, sign {request, response}.
+            inner_tool = args.get("tool")
+            inner_args = args.get("arguments") or {}
+            if not inner_tool or not isinstance(inner_tool, str):
+                return MCPResponse(
+                    status="error", tool=name, result="Missing required parameter: tool"
+                ).to_dict()
+            if inner_tool in ATTEST_TOOL_NAMES:
+                return MCPResponse(
+                    status="error", tool=name,
+                    result="Cannot sign attestation meta-tools (no recursion).",
+                ).to_dict()
+            if inner_tool not in self._tool_index:
+                return MCPResponse(
+                    status="error", tool=name, result=f"Unknown tool '{inner_tool}'.",
+                ).to_dict()
+
+            inner = await self.call_tool(inner_tool, inner_args, auth_token=auth_token)
+            request = {"tool": inner_tool, "arguments": inner_args}
+            attestation = attestor.attest({"request": request, "response": inner})
+            return MCPResponse(
+                status="success", tool=name,
+                result=json.dumps(
+                    {"request": request, "response": inner, "attestation": attestation},
+                    default=str,
+                ),
+            ).to_dict()
 
     if rc_server is not None:
         return rc_server

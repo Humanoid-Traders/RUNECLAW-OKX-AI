@@ -55,7 +55,15 @@ public market data (not just Bitget). They return **derived analysis only** — 
 the raw OKX candles (see the data-redistribution note in
 [`docs/OKX_OPPORTUNITIES.md`](docs/OKX_OPPORTUNITIES.md)). No OKX API key required.
 
-18 read-only tools in total. There is **no** `runeclaw_execute`, and a pure
+**Verifiable analysis (`runeclaw_okx/attestation.py`):** `runeclaw_signed` runs any
+read-only tool and returns its result with an **Ed25519 signature** over
+`{request, response}` — a portable receipt that an agent (or an OKX Evaluator in a
+dispute) can independently verify that RUNECLAW produced exactly that output.
+`runeclaw_attest_key` returns the public key + verification recipe. Set a persistent
+signing key with `MCP_ATTEST_PRIVATE_KEY` (base64 32-byte seed), else a per-process
+ephemeral key is used.
+
+20 read-only tools in total. There is **no** `runeclaw_execute`, and a pure
 analysis-only invariant test guarantees no tool can map to an execution skill.
 
 ## Analysis-only enforcement (defence in depth)

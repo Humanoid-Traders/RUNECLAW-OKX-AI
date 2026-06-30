@@ -26,7 +26,7 @@ RUNECLAW today **consumes Bitget data** and **exposes analysis**. OKX adds:
 | **B** | Shield-as-a-Service | 23-check fail-closed risk verdict oracle | A2MCP, priced | Recurring per-call | Low | Low |
 | **C** | Analyze OKX / on-chain markets | pattern + microstructure + quant stack | consume OKX public market data | Expands TAM | Med | ⚠️ data-redistribution clause — **CEX leg done** |
 | **D** | A2A escrow deliverables | custom backtests, walk-forward of a user strategy, "red-team my strategy" (`red_team.py`) | A2A escrow on X Layer | Per-deliverable | Med | Med — needs wallet |
-| **E** | Verifiable analysis | SHA-256 + Ed25519 audit chain | trust layer for disputes/Evaluators | Premium tier | Med | Low |
+| **E** | Verifiable analysis | SHA-256 + Ed25519 audit chain | trust layer for disputes/Evaluators | Premium tier | Med | Low — **done** |
 | **F** | Evaluator node | `critique.py` + `red_team.py` + Shield as adjudicator | Evaluator role, stake OKB | Arbitration bounties | High | High — opaque economics |
 
 ## Constraints that gate the above
@@ -87,12 +87,20 @@ consent). Remaining for C: the **DEX/on-chain leg** (`okx-dex-signal` smart-mone
 `okx-dex-market` OHLC) needs an OKX Developer-Portal API key and the same
 derived-only discipline.
 
+## Opportunity E — verifiable analysis (built)
+
+`runeclaw_okx/attestation.py` signs analysis with **Ed25519** (the same primitive as
+RUNECLAW's audit-chain attestation) as a standalone, externally verifiable receipt:
+`runeclaw_signed` runs any read-only tool and returns its result plus a signature
+over `{request, response}`; `runeclaw_attest_key` publishes the public key + verify
+recipe. Any Ed25519 library verifies it — no RUNECLAW code needed — which is exactly
+what an OKB-staked Evaluator needs to adjudicate "did RUNECLAW really return this?".
+The signing key is per-deployment (`MCP_ATTEST_PRIVATE_KEY`), ephemeral if unset.
+
 ## Suggested next steps (in order)
 
 1. **Reconcile the Shield count** upstream in RUNECLAW (small, correctness).
 2. **Opportunity C — DEX leg**: add the keyed OKX DEX data sources (smart-money /
-   on-chain OHLC) behind the same derived-only adapter.
-3. **Opportunity E — signed attestation endpoint** surfacing the audit chain, for a
-   "verifiable analysis" premium tier that fits the dispute/Evaluator economy.
-4. **Live monetization (B/D/F)** — only after the wallet/payment risk review:
+   on-chain OHLC) behind the same derived-only adapter (needs an OKX API key).
+3. **Live monetization (B/D/F)** — only after the wallet/payment risk review:
    Agentic Wallet identity, OKX Payment SDK verifier, A2A escrow deliverables.
