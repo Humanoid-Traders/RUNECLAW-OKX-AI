@@ -375,6 +375,40 @@
         "readOnly": true
       },
       {
+        "name": "runeclaw_dex_quant",
+        "description": "Run RUNECLAW's quant report (regime, GARCH volatility, Hurst, edge-gate) on OKX DEX market data for an on-chain token. Returns derived analysis only — not raw OKX candles. Requires OKX DEX API credentials. Read-only.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "chain": {
+              "type": "string",
+              "description": "OKX chainIndex, e.g. '1' (Ethereum), '501' (Solana)."
+            },
+            "token": {
+              "type": "string",
+              "description": "Token contract address on that chain."
+            },
+            "timeframe": {
+              "type": "string",
+              "description": "Candle timeframe, e.g. '1H', '4H', '1D'.",
+              "default": "4h"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Number of candles to fetch (1-300).",
+              "default": 300
+            }
+          },
+          "required": [
+            "chain",
+            "token"
+          ],
+          "additionalProperties": false
+        },
+        "price": "0.05",
+        "readOnly": true
+      },
+      {
         "name": "runeclaw_attest_key",
         "description": "Return the server's Ed25519 attestation public key, key id, and the verification recipe, so callers can independently verify signed analysis. Read-only.",
         "inputSchema": {
