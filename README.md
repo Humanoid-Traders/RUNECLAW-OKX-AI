@@ -9,10 +9,11 @@ OpenClaw) — over stdio.
 > safety* window into RUNECLAW's brain. It **cannot** place, size, or confirm a
 > live trade. No wallet, on-chain, or stablecoin-settlement surface is involved.
 
-This implements **PR 1–3** of the plan in
+This implements **PR 1–3 + PR 5** of the plan in
 [`vendor/runeclaw/docs/OKX_AI_MCP_INTEGRATION.md`](vendor/runeclaw/docs/OKX_AI_MCP_INTEGRATION.md):
-the stdio transport adapter, the analysis-only invariant and fail-closed auth, and
-the streamable-HTTP transport for a network-reachable endpoint.
+the stdio transport adapter, the analysis-only invariant and fail-closed auth, the
+streamable-HTTP transport for a network-reachable endpoint, and a
+[`skills/`](skills/) pack that fronts the analysis on OKX AI / Onchain OS.
 
 ## How it relates to RUNECLAW
 
@@ -116,6 +117,15 @@ by default and does not speak TLS. For a public endpoint, front it with nginx/Ca
 handling TLS and forwarding to `127.0.0.1:8765`, and add the public hostname to
 `MCP_HTTP_ALLOWED_HOSTS`. Issue a **dedicated** token for the public endpoint
 (distinct from any internal one) and rotate it.
+
+### Skill pack for OKX AI / Onchain OS (PR 5)
+
+[`skills/`](skills/) packages RUNECLAW's read-only analysis as Markdown+YAML
+*skills* — `runeclaw-shield` and `runeclaw-analyze` — so OKX AI agents (OpenClaw,
+Hermes, Claude Code, Codex) can discover and use them in natural language. Each
+skill points the agent at the MCP server above and fronts the analysis only; there
+is no execution path. See [`skills/README.md`](skills/README.md) for the format,
+distribution (`npx skills add okx/<pack>`), and the open submission questions.
 
 ### OKX AI registration (PR 4 — not yet wired)
 
