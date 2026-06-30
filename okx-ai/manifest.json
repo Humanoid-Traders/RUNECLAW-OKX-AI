@@ -186,6 +186,129 @@
         },
         "price": "0.05",
         "readOnly": true
+      },
+      {
+        "name": "runeclaw_quant",
+        "description": "Quant report for a symbol: market regime, GARCH volatility forecast, Hurst exponent, a multi-factor edge score and a hard edge-gate (read-only; produces no trades).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "description": "Trading pair, e.g. 'BTC/USDT'.",
+              "default": "BTC/USDT"
+            },
+            "timeframe": {
+              "type": "string",
+              "description": "Candle timeframe, e.g. '1h', '4h', '1d'.",
+              "default": "4h"
+            }
+          },
+          "additionalProperties": false
+        },
+        "price": "0.05",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_walkforward",
+        "description": "Walk-forward backtest with anchored-expanding train / rolling out-of-sample folds and an embargo gap; returns the overfit (train-test) gap, consistency score and per-bucket confidence calibration (synthetic data, read-only).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "bars": {
+              "type": "integer",
+              "description": "OHLCV bars of synthetic data (max 5000).",
+              "default": 1440
+            },
+            "seed": {
+              "type": "integer",
+              "description": "Random seed for reproducible synthetic data.",
+              "default": 42
+            },
+            "folds": {
+              "type": "integer",
+              "description": "Number of walk-forward folds (1-10).",
+              "default": 3
+            }
+          },
+          "additionalProperties": false
+        },
+        "price": "0.05",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_whynot",
+        "description": "Explain why recent trade ideas were rejected by the risk engine, optionally filtered to one symbol. Read-only.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "description": "Optional trading pair to filter, e.g. 'BTC/USDT'."
+            }
+          },
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_event_risk",
+        "description": "Macro-event risk for a given symbol: upcoming high-impact events and the current event-risk state. Read-only.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "description": "Trading pair, e.g. 'BTC/USDT'."
+            }
+          },
+          "required": [
+            "symbol"
+          ],
+          "additionalProperties": false
+        },
+        "price": "0.02",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_macro_brief",
+        "description": "Macro window status: the current macro-event risk state and the next scheduled events. Read-only.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_rejected",
+        "description": "Recent trade ideas rejected by the risk engine, with the failing checks. Read-only.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "description": "How many recent rejections to return (1-50).",
+              "default": 5
+            }
+          },
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_patterns",
+        "description": "Chart / market patterns detected across the scanned universe. Read-only.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
       }
     ]
   }

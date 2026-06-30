@@ -19,6 +19,7 @@ _SKILLS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 _SKILLS = {
     "runeclaw-shield": "runeclaw_shield",
     "runeclaw-analyze": "runeclaw_analyze",
+    "runeclaw-quant": "runeclaw_quant",
 }
 
 # Tokens that would indicate an execution path leaked into a skill.
@@ -79,10 +80,15 @@ def test_every_skill_dir_is_registered():
 
 
 def test_skills_front_only_readonly_catalogue_tools():
-    """Cross-check: each skill's tool is a real, read-only RUNECLAW MCP tool, and
-    none is the (unexposed) execution tool. Skips if the submodule is absent."""
+    """Cross-check: each skill's tool is a real, read-only RUNECLAW MCP tool (base
+    or extended), and none is the (unexposed) execution tool. Skips if the submodule
+    is absent."""
     server = pytest.importorskip("bot.mcp.server")
-    catalogue = {t.mcp_name for t in server.TOOL_CATALOGUE}
+    from runeclaw_okx.extended_server import EXTENDED_TOOLS
+
+    catalogue = {t.mcp_name for t in server.TOOL_CATALOGUE} | {
+        t["mcp_name"] for t in EXTENDED_TOOLS
+    }
     assert "runeclaw_execute" not in catalogue
     for tool in _SKILLS.values():
         assert tool in catalogue, f"skill tool '{tool}' is not in the MCP catalogue"

@@ -28,24 +28,47 @@ import os
 import sys
 
 # Per-call price (string, minor-unit-safe) keyed by MCP tool. Flat default; the
-# heavier full-universe scan / backtest cost a little more. Adjust before listing.
+# heavier full-universe scan / backtest / quant work cost a little more. Adjust
+# before listing.
 _DEFAULT_PRICE = "0.01"
 _PER_TOOL_PRICE = {
     "runeclaw_fullscan": "0.05",
     "runeclaw_backtest": "0.05",
     "runeclaw_shield": "0.02",
+    "runeclaw_quant": "0.05",
+    "runeclaw_walkforward": "0.05",
+    "runeclaw_event_risk": "0.02",
 }
 
-_MANIFEST_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "okx-ai", "manifest.json"
-)
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_MANIFEST_PATH = os.path.join(_ROOT, "okx-ai", "manifest.json")
+
+# Make `runeclaw_okx` (repo root) and `bot` (submodule) importable when run
+# directly, so callers don't have to pre-set PYTHONPATH.
+for _p in (_ROOT, os.path.join(_ROOT, "vendor", "runeclaw")):
+    if os.path.isdir(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
 
 
 def build_manifest() -> dict:
-    from bot.mcp.server import TOOL_CATALOGUE, RuneClawMCPServer
+    from bot.mcp.server import MCPToolDef, MCPToolParam, RuneClawMCPServer, TOOL_CATALOGUE
+
+    from runeclaw_okx.extended_server import EXTENDED_TOOLS, assert_extended_readonly
+
+    assert_extended_readonly()
+    extended_defs = tuple(
+        MCPToolDef(
+            mcp_name=t["mcp_name"],
+            skill_name=t["skill_name"],
+            description=t["description"],
+            params=tuple(MCPToolParam(**p) for p in t["params"]),
+        )
+        for t in EXTENDED_TOOLS
+    )
+    all_defs = tuple(TOOL_CATALOGUE) + extended_defs
 
     tools = []
-    for tdef in TOOL_CATALOGUE:
+    for tdef in all_defs:
         schema = RuneClawMCPServer._build_tool_schema(tdef)
         tools.append(
             {
