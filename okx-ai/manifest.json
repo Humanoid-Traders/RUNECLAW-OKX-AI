@@ -1,0 +1,192 @@
+{
+  "_schema": "okx-ai/a2mcp@draft",
+  "_notes": "DRAFT field layout — confirm against OKX's ASP / A2MCP provider spec before registering. tools[] is generated from RUNECLAW's read-only catalogue; do not hand-edit. See okx-ai/README.md.",
+  "service": {
+    "name": "RUNECLAW Analysis",
+    "type": "a2mcp",
+    "version": "0.1.0",
+    "description": "Read-only crypto market analysis, risk evaluation (RUNECLAW Shield, 21 fail-closed checks), macro-event risk state, and synthetic backtests, exposed as MCP tools. Analysis only — no trade execution.",
+    "provider": {
+      "name": "<your-provider-name>",
+      "contact": "<your-contact>",
+      "agenticWallet": "<set-during-okx-registration>"
+    },
+    "endpoint": {
+      "transport": "streamable-http",
+      "url": "https://<your-public-host>/mcp",
+      "healthcheck": "https://<your-public-host>/healthz",
+      "auth": "bearer"
+    },
+    "pricing": {
+      "model": "per_call",
+      "currency": "USDC",
+      "defaultPrice": "0.01",
+      "settlement": "okx-payment-sdk"
+    },
+    "tools": [
+      {
+        "name": "runeclaw_scan",
+        "description": "Scan the exchange for top movers and volume anomalies.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_analyze",
+        "description": "Run AI analysis on a specific asset and generate a trade idea.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "description": "Trading pair symbol, e.g. 'BTC/USDT'."
+            }
+          },
+          "required": [
+            "symbol"
+          ],
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_risk",
+        "description": "Show current risk metrics, drawdown, and circuit-breaker status.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_portfolio",
+        "description": "Show paper-portfolio summary: balance, equity, win rate, PnL.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_explain",
+        "description": "Explain a pending or historical trade idea.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "trade_id": {
+              "type": "string",
+              "description": "The trade ID to explain. Omit to list pending ideas.",
+              "default": ""
+            }
+          },
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_macro",
+        "description": "Show macro-event calendar: current risk state and upcoming events.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "price": "0.01",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_shield",
+        "description": "RUNECLAW Shield: 21 fail-closed risk checks on a trade proposal. Any external agent can call this to get an immutable safety decision. Returns approved/rejected with check details.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "description": "Trading pair, e.g. 'BTC/USDT'."
+            },
+            "direction": {
+              "type": "string",
+              "description": "Trade direction: 'long' or 'short'."
+            },
+            "entry_price": {
+              "type": "number",
+              "description": "Proposed entry price."
+            },
+            "stop_loss": {
+              "type": "number",
+              "description": "Stop loss price."
+            },
+            "take_profit": {
+              "type": "number",
+              "description": "Take profit price."
+            },
+            "confidence": {
+              "type": "number",
+              "description": "Signal confidence 0.0-1.0.",
+              "default": 0.65
+            }
+          },
+          "required": [
+            "symbol",
+            "direction",
+            "entry_price",
+            "stop_loss",
+            "take_profit"
+          ],
+          "additionalProperties": false
+        },
+        "price": "0.02",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_fullscan",
+        "description": "Run full 67-symbol market scan across the RUNECLAW universe. Returns ranked signals with RSI, volume, chart patterns, and scores.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "description": "Scan mode: 'quick' (top 10), 'deep' (all 67), 'swing', 'scalp'.",
+              "default": "quick"
+            }
+          },
+          "additionalProperties": false
+        },
+        "price": "0.05",
+        "readOnly": true
+      },
+      {
+        "name": "runeclaw_backtest",
+        "description": "Run a backtest with synthetic data.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "bars": {
+              "type": "integer",
+              "description": "Number of OHLCV bars to generate (max 5000).",
+              "default": 720
+            },
+            "seed": {
+              "type": "integer",
+              "description": "Random seed for reproducible synthetic data.",
+              "default": 42
+            }
+          },
+          "additionalProperties": false
+        },
+        "price": "0.05",
+        "readOnly": true
+      }
+    ]
+  }
+}

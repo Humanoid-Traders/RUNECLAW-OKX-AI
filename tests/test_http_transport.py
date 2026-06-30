@@ -17,6 +17,7 @@ import pytest
 from runeclaw_okx import http_transport
 from runeclaw_okx.http_transport import (
     BearerAuthASGIMiddleware,
+    PaymentASGIMiddleware,
     RateLimiter,
 )
 
@@ -115,6 +116,58 @@ class TestBearerAuthMiddleware:
 
 
 # ---------------------------------------------------------------------------
+# OKX Payment SDK scaffold (pay-per-call gate) — off by default
+# ---------------------------------------------------------------------------
+
+class _FakeVerifier:
+    def __init__(self, paid: bool, reason: str = "") -> None:
+        self.paid = paid
+        self.reason = reason
+        self.calls = 0
+
+    async def verify(self, *, path, headers):
+        self.calls += 1
+        return self.paid, self.reason
+
+
+@pytest.mark.skipif(not _HAS_STARLETTE, reason="starlette not installed")
+class TestPaymentMiddleware:
+    def _client(self, verifier):
+        from starlette.applications import Starlette
+        from starlette.routing import Mount
+        from starlette.testclient import TestClient
+
+        async def _ok(scope, receive, send):
+            await send({"type": "http.response.start", "status": 200, "headers": []})
+            await send({"type": "http.response.body", "body": b"ok"})
+
+        app = Starlette(routes=[Mount("/mcp", app=PaymentASGIMiddleware(_ok, verifier))])
+        return TestClient(app)
+
+    def test_unpaid_returns_402(self):
+        v = _FakeVerifier(paid=False, reason="no settlement proof")
+        r = self._client(v).get("/mcp/")
+        assert r.status_code == 402
+        assert "no settlement proof" in r.json()["result"]
+
+    def test_paid_passes_through(self):
+        r = self._client(_FakeVerifier(paid=True)).get("/mcp/")
+        assert r.status_code == 200
+        assert r.text == "ok"
+
+
+class TestPaymentDefault:
+    def test_payment_off_by_default(self, monkeypatch):
+        monkeypatch.delenv("MCP_REQUIRE_PAYMENT", raising=False)
+        assert http_transport._payment_required_default() is False
+
+    @pytest.mark.parametrize("value", ["1", "true", "yes", "on"])
+    def test_env_enables_requirement(self, monkeypatch, value):
+        monkeypatch.setenv("MCP_REQUIRE_PAYMENT", value)
+        assert http_transport._payment_required_default() is True
+
+
+# ---------------------------------------------------------------------------
 # Full-app guards (need the mcp SDK; guard failures raise before RUNECLAW load)
 # ---------------------------------------------------------------------------
 
@@ -130,6 +183,14 @@ class TestHttpAppGuards:
         monkeypatch.setenv("MCP_ALLOW_EXECUTE", "true")
         monkeypatch.setenv("MCP_AUTH_TOKEN", "secret")
         with pytest.raises(RuntimeError, match="MCP_ALLOW_EXECUTE"):
+            http_transport.build_http_app()
+
+    def test_build_refuses_when_payment_required_without_verifier(self, monkeypatch):
+        # Fail-closed: don't serve a paid A2MCP listing for free.
+        monkeypatch.delenv("MCP_ALLOW_EXECUTE", raising=False)
+        monkeypatch.setenv("MCP_AUTH_TOKEN", "secret")
+        monkeypatch.setenv("MCP_REQUIRE_PAYMENT", "true")
+        with pytest.raises(RuntimeError, match="PaymentVerifier"):
             http_transport.build_http_app()
 
 
@@ -174,3 +235,23 @@ class TestHttpAppIntegration:
             )
             # Past the auth gate: whatever the MCP layer answers, it is not a 401.
             assert r.status_code != 401
+
+    def test_payment_gate_runs_after_auth(self, monkeypatch):
+        # Wiring order: a valid token clears auth, then a denying verifier → 402.
+        pytest.importorskip("bot.mcp.server")
+        import bot.mcp.server as mcp_server
+        from starlette.testclient import TestClient
+
+        monkeypatch.delenv("MCP_ALLOW_EXECUTE", raising=False)
+        monkeypatch.setenv("MCP_AUTH_TOKEN", "test-token")
+        monkeypatch.setattr(mcp_server, "_MCP_AUTH_TOKEN", "test-token")
+        verifier = _FakeVerifier(paid=False, reason="unpaid")
+        app = http_transport.build_http_app(payment_verifier=verifier, require_payment=True)
+        with TestClient(app) as client:
+            # No token → 401 (auth first), verifier never consulted.
+            assert client.post("/mcp/", json={}).status_code == 401
+            assert verifier.calls == 0
+            # Valid token → auth clears, payment gate denies → 402.
+            r = client.post("/mcp/", headers={"Authorization": "Bearer test-token"}, json={})
+            assert r.status_code == 402
+            assert verifier.calls == 1

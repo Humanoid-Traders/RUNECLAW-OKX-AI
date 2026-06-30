@@ -33,9 +33,9 @@ import hmac
 import json
 import os
 import time
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Protocol, runtime_checkable
 
-from runeclaw_okx.transport import _resolve_auth_token, build_server
+from runeclaw_okx.transport import _TRUTHY, _resolve_auth_token, build_server
 
 # Default fixed-window rate limit (requests per window, per token).
 _DEFAULT_RPM = 120
@@ -127,6 +127,60 @@ class BearerAuthASGIMiddleware:
         await send({"type": "http.response.body", "body": body})
 
 
+@runtime_checkable
+class PaymentVerifier(Protocol):
+    """Integration seam for OKX A2MCP pay-per-call settlement (OKX Payment SDK).
+
+    A real implementation wraps the OKX Payment SDK: it inspects the request's
+    payment proof (e.g. a settlement header the calling agent attaches) and
+    confirms the per-call charge cleared. RUNECLAW ships no concrete verifier —
+    the analysis service runs free/unmetered by default — so this is the single
+    place to plug the SDK in when listing as a paid A2MCP provider.
+    """
+
+    async def verify(self, *, path: str, headers: dict[bytes, bytes]) -> tuple[bool, str]:
+        """Return ``(paid, reason)``. ``reason`` is surfaced on a 402 when unpaid."""
+        ...
+
+
+class PaymentASGIMiddleware:
+    """Pure-ASGI per-call payment gate (HTTP 402 when unpaid).
+
+    Sits between auth and the MCP handler — callers are authenticated *before*
+    they are charged. Off by default: only inserted when a :class:`PaymentVerifier`
+    is configured (see :func:`build_http_app`).
+    """
+
+    def __init__(self, app: ASGIApp, verifier: PaymentVerifier) -> None:
+        self._app = app
+        self._verifier = verifier
+
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        if scope.get("type") != "http":
+            await self._app(scope, receive, send)
+            return
+        headers = {k.lower(): v for k, v in scope.get("headers", [])}
+        paid, reason = await self._verifier.verify(path=scope.get("path", ""), headers=headers)
+        if not paid:
+            body = json.dumps(
+                {"status": "error", "result": reason or "Payment required."}
+            ).encode()
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 402,
+                    "headers": [(b"content-type", b"application/json")],
+                }
+            )
+            await send({"type": "http.response.body", "body": body})
+            return
+        await self._app(scope, receive, send)
+
+
+def _payment_required_default() -> bool:
+    return os.environ.get("MCP_REQUIRE_PAYMENT", "").strip().lower() in _TRUTHY
+
+
 def _security_settings() -> Any:
     """Build DNS-rebinding protection settings (localhost allow-list by default)."""
     from mcp.server.transport_security import TransportSecuritySettings
@@ -151,16 +205,32 @@ def build_http_app(
     *,
     requests_per_minute: int = _DEFAULT_RPM,
     mount_path: str = "/mcp",
+    payment_verifier: PaymentVerifier | None = None,
+    require_payment: bool | None = None,
 ) -> Any:
     """Build the Starlette ASGI app exposing the analysis-only MCP server over HTTP.
 
     Enforces the same fail-closed guards as stdio (via :func:`build_server`):
     ``MCP_ALLOW_EXECUTE`` must be unset and ``MCP_AUTH_TOKEN`` must be present.
+
+    Payment is **off by default** (the service runs free), so the endpoint is
+    byte-identical to the unmetered HTTP transport unless a ``payment_verifier`` is
+    supplied. ``require_payment`` (default: ``$MCP_REQUIRE_PAYMENT``) fails closed:
+    if payment is required but no verifier is wired, the app refuses to build,
+    rather than silently serving a paid listing for free.
     """
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
     from starlette.applications import Starlette
     from starlette.responses import JSONResponse
     from starlette.routing import Mount, Route
+
+    if require_payment is None:
+        require_payment = _payment_required_default()
+    if require_payment and payment_verifier is None:
+        raise RuntimeError(
+            "MCP_REQUIRE_PAYMENT is set but no PaymentVerifier is configured. "
+            "Wire the OKX Payment SDK verifier before serving a paid A2MCP endpoint."
+        )
 
     server, _rc = build_server(rc_server)  # runs guards; constructs RuneClawMCPServer
     token = _resolve_auth_token()
@@ -180,7 +250,12 @@ def build_http_app(
         return JSONResponse({"status": "ok", "service": "runeclaw-okx-mcp"})
 
     limiter = RateLimiter(limit=requests_per_minute, window_seconds=_RATE_WINDOW_SECONDS)
-    guarded_mcp = BearerAuthASGIMiddleware(_handle_mcp, token, limiter)
+    # Order (outermost → innermost): auth → payment → MCP. Authenticate before
+    # charging; only insert the payment gate when a verifier is configured.
+    inner: ASGIApp = _handle_mcp
+    if payment_verifier is not None:
+        inner = PaymentASGIMiddleware(inner, payment_verifier)
+    guarded_mcp = BearerAuthASGIMiddleware(inner, token, limiter)
 
     @contextlib.asynccontextmanager
     async def _lifespan(_app: Any):
