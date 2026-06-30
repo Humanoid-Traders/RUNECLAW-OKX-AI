@@ -38,6 +38,9 @@ _PER_TOOL_PRICE = {
     "runeclaw_quant": "0.05",
     "runeclaw_walkforward": "0.05",
     "runeclaw_event_risk": "0.02",
+    # OKX-data tools fetch + compute; price them like the heavier analyses.
+    "runeclaw_okx_quant": "0.05",
+    "runeclaw_okx_backtest": "0.05",
 }
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -54,18 +57,22 @@ def build_manifest() -> dict:
     from bot.mcp.server import MCPToolDef, MCPToolParam, RuneClawMCPServer, TOOL_CATALOGUE
 
     from runeclaw_okx.extended_server import EXTENDED_TOOLS, assert_extended_readonly
+    from runeclaw_okx.okx_data import OKX_DATA_TOOLS
 
     assert_extended_readonly()
-    extended_defs = tuple(
-        MCPToolDef(
-            mcp_name=t["mcp_name"],
-            skill_name=t["skill_name"],
-            description=t["description"],
-            params=tuple(MCPToolParam(**p) for p in t["params"]),
+
+    def _to_defs(catalogue):
+        return tuple(
+            MCPToolDef(
+                mcp_name=t["mcp_name"],
+                skill_name=t["skill_name"],
+                description=t["description"],
+                params=tuple(MCPToolParam(**p) for p in t["params"]),
+            )
+            for t in catalogue
         )
-        for t in EXTENDED_TOOLS
-    )
-    all_defs = tuple(TOOL_CATALOGUE) + extended_defs
+
+    all_defs = tuple(TOOL_CATALOGUE) + _to_defs(EXTENDED_TOOLS) + _to_defs(OKX_DATA_TOOLS)
 
     tools = []
     for tdef in all_defs:

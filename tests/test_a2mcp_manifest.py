@@ -52,9 +52,10 @@ class TestManifestShape:
 
     def test_includes_the_extended_readonly_tools(self):
         from runeclaw_okx.extended_server import EXTENDED_TOOLS
+        from runeclaw_okx.okx_data import OKX_DATA_TOOLS
 
         names = {t["name"] for t in _load_manifest()["service"]["tools"]}
-        for t in EXTENDED_TOOLS:
+        for t in (*EXTENDED_TOOLS, *OKX_DATA_TOOLS):
             assert t["mcp_name"] in names
 
     def test_no_execution_tool_listed(self):
@@ -71,10 +72,13 @@ class TestManifestMatchesCatalogue:
     def test_tool_names_match_catalogue(self):
         server = pytest.importorskip("bot.mcp.server")
         from runeclaw_okx.extended_server import EXTENDED_TOOLS
+        from runeclaw_okx.okx_data import OKX_DATA_TOOLS
 
-        expected = {t.mcp_name for t in server.TOOL_CATALOGUE} | {
-            t["mcp_name"] for t in EXTENDED_TOOLS
-        }
+        expected = (
+            {t.mcp_name for t in server.TOOL_CATALOGUE}
+            | {t["mcp_name"] for t in EXTENDED_TOOLS}
+            | {t["mcp_name"] for t in OKX_DATA_TOOLS}
+        )
         manifest_names = {t["name"] for t in _load_manifest()["service"]["tools"]}
         assert manifest_names == expected
 

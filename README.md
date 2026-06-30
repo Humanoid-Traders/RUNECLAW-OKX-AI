@@ -49,9 +49,14 @@ current engine; the served tool description still says 21, see
 (overfit-aware backtest validation), `runeclaw_whynot`, `runeclaw_event_risk`,
 `runeclaw_macro_brief`, `runeclaw_rejected`, `runeclaw_patterns`.
 
-16 read-only tools in total. There is **no** `runeclaw_execute`, and a pure
-analysis-only invariant test guarantees no tool (base or extended) can map to an
-execution skill.
+**OKX market data (`runeclaw_okx/okx_data.py`):** `runeclaw_okx_quant` and
+`runeclaw_okx_backtest` run RUNECLAW's quant report / strategy backtest on **OKX**
+public market data (not just Bitget). They return **derived analysis only** — never
+the raw OKX candles (see the data-redistribution note in
+[`docs/OKX_OPPORTUNITIES.md`](docs/OKX_OPPORTUNITIES.md)). No OKX API key required.
+
+18 read-only tools in total. There is **no** `runeclaw_execute`, and a pure
+analysis-only invariant test guarantees no tool can map to an execution skill.
 
 ## Analysis-only enforcement (defence in depth)
 

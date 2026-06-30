@@ -19,6 +19,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from runeclaw_okx.okx_data import (
+    OKX_DATA_TOOLS,
+    assert_okx_readonly,
+    okx_skill_instances,
+)
+
 # Skills that can place/confirm trades or mutate live/breaker state. An extended
 # tool must NEVER map to one of these (asserted at build + in tests).
 EXECUTION_SKILLS: frozenset[str] = frozenset(
@@ -181,6 +187,7 @@ EXTENDED_TOOLS: tuple[dict[str, Any], ...] = (
 _EXTRA_BOUNDS: dict[str, tuple[int, int]] = {
     "folds": (1, 10),
     "count": (1, 50),
+    "limit": (1, 300),
 }
 
 
@@ -203,6 +210,8 @@ def assert_extended_readonly() -> None:
             raise RuntimeError(
                 f"Extended tool '{name}' maps to non-allow-listed skill '{skill}'"
             )
+    # The OKX-data tools are read-only by construction; validate them too.
+    assert_okx_readonly()
 
 
 def build_extended_server(rc_server: Any | None = None) -> Any:
@@ -215,20 +224,28 @@ def build_extended_server(rc_server: Any | None = None) -> Any:
 
     from bot.mcp.server import MCPToolDef, MCPToolParam, RuneClawMCPServer
 
-    defs = tuple(
-        MCPToolDef(
-            mcp_name=t["mcp_name"],
-            skill_name=t["skill_name"],
-            description=t["description"],
-            params=tuple(MCPToolParam(**p) for p in t["params"]),
+    def _to_defs(catalogue: tuple[dict[str, Any], ...]) -> tuple[Any, ...]:
+        return tuple(
+            MCPToolDef(
+                mcp_name=t["mcp_name"],
+                skill_name=t["skill_name"],
+                description=t["description"],
+                params=tuple(MCPToolParam(**p) for p in t["params"]),
+            )
+            for t in catalogue
         )
-        for t in EXTENDED_TOOLS
-    )
+
+    defs = _to_defs(EXTENDED_TOOLS) + _to_defs(OKX_DATA_TOOLS)
+    okx_skills = okx_skill_instances()
 
     class _ExtendedRuneClawMCPServer(RuneClawMCPServer):
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             super().__init__(*args, **kwargs)
-            # Make the extended tools dispatchable (call_tool uses _tool_index).
+            # Register the OKX-data skills so call_tool can dispatch them through
+            # the same auth/validation/error path as every other tool.
+            for skill in okx_skills:
+                self._registry.register(skill)
+            # Make the extended + OKX tools dispatchable (call_tool uses _tool_index).
             for d in defs:
                 self._tool_index[d.mcp_name] = d
 
