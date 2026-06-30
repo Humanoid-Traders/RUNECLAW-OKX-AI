@@ -31,11 +31,16 @@ Design constraints (mirrors ``vendor/runeclaw/docs/OKX_AI_MCP_INTEGRATION.md``):
 
 Run::
 
-    MCP_AUTH_TOKEN=... python -m runeclaw_okx.transport
+    MCP_AUTH_TOKEN=... python -m runeclaw_okx.transport                       # stdio (default)
+    MCP_AUTH_TOKEN=... python -m runeclaw_okx.transport --transport http      # streamable-HTTP
+
+The streamable-HTTP transport lives in :mod:`runeclaw_okx.http_transport` and is
+imported lazily, so stdio users never need Starlette / uvicorn installed.
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import os
@@ -159,9 +164,47 @@ async def serve() -> None:
         audit(system_log, "MCP stdio transport stopped", action="mcp_transport_stop")
 
 
-def main() -> None:
-    """Console entrypoint: ``python -m runeclaw_okx.transport``."""
-    asyncio.run(serve())
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog="runeclaw-okx-mcp",
+        description="Analysis-only RUNECLAW MCP server for OKX AI and other MCP clients.",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=("stdio", "http"),
+        default=os.environ.get("MCP_TRANSPORT", "stdio"),
+        help="Transport to serve (default: stdio, or $MCP_TRANSPORT).",
+    )
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("MCP_HTTP_HOST", "127.0.0.1"),
+        help="HTTP bind host (http transport only; default: 127.0.0.1).",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("MCP_HTTP_PORT", "8765")),
+        help="HTTP bind port (http transport only; default: 8765).",
+    )
+    parser.add_argument(
+        "--rpm",
+        type=int,
+        default=int(os.environ.get("MCP_HTTP_RPM", "120")),
+        help="Per-token requests/minute rate limit (http transport only; default: 120).",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Console entrypoint: ``python -m runeclaw_okx.transport [--transport http]``."""
+    args = _parse_args(argv)
+    if args.transport == "http":
+        # Lazy import so the stdio path never requires Starlette / uvicorn.
+        from runeclaw_okx.http_transport import serve_http
+
+        serve_http(host=args.host, port=args.port, requests_per_minute=args.rpm)
+    else:
+        asyncio.run(serve())
 
 
 if __name__ == "__main__":
