@@ -112,7 +112,7 @@
       },
       {
         "name": "runeclaw_shield",
-        "description": "RUNECLAW Shield: 21 fail-closed risk checks on a trade proposal. Any external agent can call this to get an immutable safety decision. Returns approved/rejected with check details.",
+        "description": "RUNECLAW Shield: 23 fail-closed risk checks on a trade proposal. Any external agent can call this to get an immutable safety decision. Returns approved/rejected with check details.",
         "inputSchema": {
           "type": "object",
           "properties": {

@@ -39,10 +39,8 @@ MCP client ──stdio──▶ runeclaw_okx.transport  (official mcp SDK Server
 
 **Base (RUNECLAW's catalogue):** `runeclaw_scan`, `runeclaw_analyze`,
 `runeclaw_risk`, `runeclaw_portfolio`, `runeclaw_explain`, `runeclaw_macro`,
-`runeclaw_shield` (RUNECLAW Shield's fail-closed pre-trade risk checks — 23 in the
-current engine; the served tool description still says 21, see
-[`docs/OKX_OPPORTUNITIES.md`](docs/OKX_OPPORTUNITIES.md)), `runeclaw_fullscan`,
-`runeclaw_backtest`.
+`runeclaw_shield` (RUNECLAW Shield — 23 fail-closed pre-trade risk checks),
+`runeclaw_fullscan`, `runeclaw_backtest`.
 
 **Extended (layered in by this repo, `runeclaw_okx/extended_server.py`):**
 `runeclaw_quant` (regime / GARCH vol / Hurst / edge-gate), `runeclaw_walkforward`

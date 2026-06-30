@@ -61,15 +61,14 @@ analysis-only invariant (`assert_extended_readonly` + tests) guarantees no exten
 tool can ever map to an execution skill. The A2MCP manifest and the skill pack
 (`skills/runeclaw-quant`) were extended to match.
 
-## Flagged upstream fix — Shield check-count drift
+## Shield check-count drift — fixed upstream (RUNECLAW #203)
 
-RUNECLAW reports its Shield check count inconsistently: **23** (the engine,
-`risk_engine.py` / `skill_registry._TOTAL_RISK_CHECKS = 23`), **21** (the MCP tool
-description in `bot/mcp/server.py`), and **18** (`getclaw_wrapper.py`). The engine
-value (23) is authoritative. RUNECLAW is the pinned source of truth and is left
-untouched here; a small RUNECLAW PR should reconcile the two stale strings to 23.
-Our skill/docs reference the engine truth and note the served description still says
-21 until that lands.
+RUNECLAW previously reported its Shield check count inconsistently: 23 (the engine /
+`_TOTAL_RISK_CHECKS`, authoritative), 21 (the MCP tool description), and 18
+(`getclaw_wrapper.py`). Reconciled upstream in **RUNECLAW #203** — the MCP
+description now derives the count from `_TOTAL_RISK_CHECKS` (single source of truth)
+and the stale literals are gone. The `vendor/runeclaw` submodule here is pinned past
+that fix, so the served description and the A2MCP manifest now correctly read 23.
 
 ## Opportunity C — OKX data adapter (CEX leg built)
 
