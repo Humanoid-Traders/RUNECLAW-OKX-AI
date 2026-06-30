@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint + transport tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Best-effort submodule init. RUNECLAW is a separate private repo, so the
+      # default GITHUB_TOKEN may not have cross-repo access. If it can't be
+      # fetched, the RUNECLAW-dependent invariant / SDK-mapping tests skip and the
+      # standard-library security-guard tests still run — CI stays green either
+      # way. Configure a token with RUNECLAW read access to run the full suite.
+      - name: Initialise RUNECLAW submodule (best effort)
+        run: git submodule update --init --recursive || echo "submodule unavailable — RUNECLAW-dependent tests will skip"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install transport + test tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install mcp>=1.0.0 pytest==8.3.5 pytest-asyncio==0.24.0 pytest-timeout ruff==0.11.13
+
+      - name: Install RUNECLAW runtime deps (only if the submodule is present)
+        run: |
+          if [ -f vendor/runeclaw/bot/requirements.txt ]; then
+            pip install -r vendor/runeclaw/bot/requirements.txt || echo "RUNECLAW deps unavailable — its tests will skip"
+          fi
+
+      - name: Lint — syntax errors + undefined names (ruff E9, F821, F811)
+        run: ruff check --select E9,F821,F811 runeclaw_okx/ tests/ conftest.py
+
+      - name: Lint — unused imports + empty f-strings (ruff F401, F541)
+        run: ruff check --select F401,F541 runeclaw_okx/ tests/ conftest.py
+
+      - name: Tests
+        run: pytest -q -p no:cacheprovider --timeout=120

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "runeclaw-okx-ai"
+version = "0.1.0"
+description = "Analysis-only MCP transport exposing RUNECLAW's read-only tools to OKX AI and other MCP clients"
+readme = "README.md"
+requires-python = ">=3.11"
+# The `mcp` SDK is this repo's only direct dependency. RUNECLAW itself is
+# consumed as a git submodule (vendor/runeclaw), not a pip package, because it is
+# not published and not flat-layout installable — see README.
+dependencies = [
+    "mcp>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.5",
+    "pytest-asyncio==0.24.0",
+    "pytest-timeout>=2.3.0",
+    "ruff==0.11.13",
+]
+
+[project.scripts]
+runeclaw-okx-mcp = "runeclaw_okx.transport:main"
+
+[tool.setuptools]
+packages = ["runeclaw_okx"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+# RUNECLAW lives in the submodule; never lint the vendored tree.
+extend-exclude = ["vendor"]
