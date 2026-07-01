@@ -27,20 +27,43 @@ PYTHONPATH=vendor/runeclaw python scripts/generate_a2mcp_manifest.py --check  # 
 Before listing, fill the placeholders in `manifest.json` (`provider.*`,
 `endpoint.url`) and review per-call prices in the generator.
 
-## Payment integration (OKX Payment SDK)
+## Pay-per-call (x402 seller gate)
 
-The HTTP transport has a single, **off-by-default** seam for pay-per-call
-settlement (`runeclaw_okx/http_transport.py`):
+The HTTP transport implements the **seller side** of an x402 / OKX Agent-Payments
+flow (`runeclaw_okx/payments.py`, `runeclaw_okx/http_transport.py`). **Off by
+default** — the endpoint is byte-identical to the free transport unless enabled.
 
-- `PaymentVerifier` — a `Protocol` a real OKX Payment SDK adapter implements
-  (`verify(path, headers) -> (paid, reason)`).
-- `PaymentASGIMiddleware` — enforces it, returning **HTTP 402** when unpaid. It runs
-  **after** bearer-auth, so callers are authenticated before they are charged.
-- `MCP_REQUIRE_PAYMENT` — when set, the app **fails closed**: it refuses to build
-  unless a `PaymentVerifier` is wired, so a paid listing can never serve for free.
+**How it works**
 
-By default payment is disabled and the endpoint behaves exactly like the free
-transport. Plug the SDK in by passing `build_http_app(payment_verifier=...)`.
+1. An unpaid request to `/mcp` gets **HTTP 402** with a machine-readable x402
+   challenge (`accepts`: `scheme`, `network`, `asset`, `amount`, `payTo`, `resource`).
+2. The buyer's wallet settles on-chain via **OKX's Broker** and receives a **signed
+   settlement receipt**.
+3. The buyer retries with the receipt in an `X-PAYMENT` header. `SignedReceiptVerifier`
+   **Ed25519-verifies** it against the Broker's public key and checks
+   recipient / asset / network / amount / expiry and a **single-use nonce** (replay
+   protection) before the call is served. Payment runs **after** bearer-auth.
+
+**Enable it** (fail-closed — refuses to serve for free if config is incomplete):
+
+```bash
+export MCP_REQUIRE_PAYMENT=1
+export OKX_PAY_RECIPIENT="<your receiving wallet address>"
+export OKX_PAY_BROKER_PUBKEY="<OKX Broker receipt-signing Ed25519 pubkey, base64>"
+export OKX_PAY_ASSET=USDC OKX_PAY_NETWORK=xlayer OKX_PAY_AMOUNT=0.01   # optional
+python -m runeclaw_okx.transport --transport http
+```
+
+**What this code does NOT do (by design):** it never holds funds, signs a payment, or
+touches a wallet — it only *verifies* a receipt your own wallet/Broker already
+settled. The buyer's wallet and the on-chain settlement live in OKX's Broker.
+
+**Confirm before going live:** the OKX Broker's exact receipt field names / signing
+key and whether OKX's "Payment SDK" imposes a different envelope are an OKX-spec
+detail (not machine-readable from OKX's public docs). The canonical receipt subset
+used here is standard x402; verify it against OKX's APP spec, and note that operating
+a paid listing (a receiving wallet + on-chain settlement) is the **wallet/payment
+surface** the integration plan reserved for a risk review (§5/§7).
 
 ## Registering (operator runs this — not automated here)
 

@@ -130,6 +130,14 @@ def build_manifest() -> dict:
                 "currency": "USDC",
                 "defaultPrice": _DEFAULT_PRICE,
                 "settlement": "okx-payment-sdk",
+                "flow": "x402",
+                "note": (
+                    "Unpaid requests get HTTP 402 with an x402 `accepts` challenge; "
+                    "the buyer settles via the OKX Broker and retries with a signed "
+                    "receipt in X-PAYMENT, which the service verifies (Ed25519). "
+                    "Enable with MCP_REQUIRE_PAYMENT + OKX_PAY_RECIPIENT / "
+                    "OKX_PAY_BROKER_PUBKEY. See okx-ai/README.md."
+                ),
             },
             "provenance": {
                 "scheme": "ed25519",

@@ -185,12 +185,15 @@ class TestHttpAppGuards:
         with pytest.raises(RuntimeError, match="MCP_ALLOW_EXECUTE"):
             http_transport.build_http_app()
 
-    def test_build_refuses_when_payment_required_without_verifier(self, monkeypatch):
-        # Fail-closed: don't serve a paid A2MCP listing for free.
+    def test_build_refuses_when_payment_required_without_config(self, monkeypatch):
+        # Fail-closed: paid mode builds the signed-receipt verifier from env and
+        # refuses to serve for free if the payment config is incomplete.
         monkeypatch.delenv("MCP_ALLOW_EXECUTE", raising=False)
         monkeypatch.setenv("MCP_AUTH_TOKEN", "secret")
         monkeypatch.setenv("MCP_REQUIRE_PAYMENT", "true")
-        with pytest.raises(RuntimeError, match="PaymentVerifier"):
+        monkeypatch.delenv("OKX_PAY_RECIPIENT", raising=False)
+        monkeypatch.delenv("OKX_PAY_BROKER_PUBKEY", raising=False)
+        with pytest.raises(RuntimeError, match="OKX_PAY_RECIPIENT"):
             http_transport.build_http_app()
 
 
