@@ -49,9 +49,17 @@ MCP client ──stdio──▶ runeclaw_okx.transport  (official mcp SDK Server
 
 **OKX market data (`runeclaw_okx/okx_data.py`):** `runeclaw_okx_quant` and
 `runeclaw_okx_backtest` run RUNECLAW's quant report / strategy backtest on **OKX**
-public market data (not just Bitget). They return **derived analysis only** — never
-the raw OKX candles (see the data-redistribution note in
-[`docs/OKX_OPPORTUNITIES.md`](docs/OKX_OPPORTUNITIES.md)). No OKX API key required.
+public CEX market data (not just Bitget). No API key required.
+
+**OKX DEX / on-chain data (`runeclaw_okx/okx_dex.py`):** `runeclaw_dex_quant` runs
+the quant report on **OKX DEX** market data for an on-chain token (chain + contract
+address). The DEX/Web3 API is authenticated, so this needs OKX Developer-Portal
+credentials in the environment — `OKX_API_KEY`, `OKX_SECRET_KEY`, `OKX_PASSPHRASE`
+(and `OKX_PROJECT`) — and is **fail-closed** without them.
+
+All OKX-data tools return **derived analysis only** — never the raw OKX candles, and
+they don't re-serve OKX's signal feeds (see the data-redistribution note in
+[`docs/OKX_OPPORTUNITIES.md`](docs/OKX_OPPORTUNITIES.md)).
 
 **Verifiable analysis (`runeclaw_okx/attestation.py`):** `runeclaw_signed` runs any
 read-only tool and returns its result with an **Ed25519 signature** over
@@ -61,7 +69,7 @@ dispute) can independently verify that RUNECLAW produced exactly that output.
 signing key with `MCP_ATTEST_PRIVATE_KEY` (base64 32-byte seed), else a per-process
 ephemeral key is used.
 
-20 read-only tools in total. There is **no** `runeclaw_execute`, and a pure
+21 read-only tools in total. There is **no** `runeclaw_execute`, and a pure
 analysis-only invariant test guarantees no tool can map to an execution skill.
 
 ## Analysis-only enforcement (defence in depth)

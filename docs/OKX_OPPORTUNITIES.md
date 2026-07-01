@@ -24,7 +24,7 @@ RUNECLAW today **consumes Bitget data** and **exposes analysis**. OKX adds:
 |---|---|---|---|---|---|---|
 | **A** | Expose hidden read-only tools | quant report, walk-forward, whynot, macro briefs, rejections, patterns | A2MCP tools + skills + manifest | Per-call | Low | Low — **done this round** |
 | **B** | Shield-as-a-Service | 23-check fail-closed risk verdict oracle | A2MCP, priced | Recurring per-call | Low | Low |
-| **C** | Analyze OKX / on-chain markets | pattern + microstructure + quant stack | consume OKX public market data | Expands TAM | Med | ⚠️ data-redistribution clause — **CEX leg done** |
+| **C** | Analyze OKX / on-chain markets | pattern + microstructure + quant stack | consume OKX CEX + DEX market data | Expands TAM | Med | ⚠️ data-redistribution clause — **CEX + DEX built** |
 | **D** | A2A escrow deliverables | custom backtests, walk-forward of a user strategy, "red-team my strategy" (`red_team.py`) | A2A escrow on X Layer | Per-deliverable | Med | Med — needs wallet |
 | **E** | Verifiable analysis | SHA-256 + Ed25519 audit chain | trust layer for disputes/Evaluators | Premium tier | Med | Low — **done** |
 | **F** | Evaluator node | `critique.py` + `red_team.py` + Shield as adjudicator | Evaluator role, stake OKB | Arbitration bounties | High | High — opaque economics |
@@ -82,9 +82,19 @@ Bitget.
 output (a quant report / backtest metrics) and **never echo the raw OKX candles** —
 a test asserts the response carries no `candles`/`ohlcv`. This stays on the safe
 side of OKX's redistribution terms (derived signals OK; raw pass-through needs
-consent). Remaining for C: the **DEX/on-chain leg** (`okx-dex-signal` smart-money,
-`okx-dex-market` OHLC) needs an OKX Developer-Portal API key and the same
-derived-only discipline.
+consent).
+
+**DEX/on-chain leg** (`runeclaw_okx/okx_dex.py`, `runeclaw_dex_quant`): runs the same
+derived quant analysis on **OKX DEX** market candles for an on-chain token. The
+DEX/Web3 API is authenticated, so this signs requests with OKX's standard v5/Web3
+HMAC-SHA256 scheme using Developer-Portal credentials from the environment
+(`OKX_API_KEY` / `OKX_SECRET_KEY` / `OKX_PASSPHRASE` / `OKX_PROJECT`) and is
+**fail-closed** without them. We deliberately consume OKX DEX *market data* (and emit
+derived analysis), **not** OKX's `okx-dex-signal` smart-money feed — re-serving that
+would be redistribution. The signing scheme is unit-tested deterministically; the
+exact candles endpoint is env-overridable (`OKX_DEX_API_BASE` /
+`OKX_DEX_CANDLES_PATH`) and should be smoke-tested once against a live key, since the
+OKX docs are not machine-readable and v5/v6 paths differ per tier.
 
 ## Opportunity E — verifiable analysis (built)
 
@@ -98,8 +108,7 @@ The signing key is per-deployment (`MCP_ATTEST_PRIVATE_KEY`), ephemeral if unset
 
 ## Suggested next steps (in order)
 
-1. **Reconcile the Shield count** upstream in RUNECLAW (small, correctness).
-2. **Opportunity C — DEX leg**: add the keyed OKX DEX data sources (smart-money /
-   on-chain OHLC) behind the same derived-only adapter (needs an OKX API key).
-3. **Live monetization (B/D/F)** — only after the wallet/payment risk review:
+1. **Live-verify the DEX leg** once an OKX Developer-Portal key is available (confirm
+   the candles endpoint/version and the signing handshake against the real API).
+2. **Live monetization (B/D/F)** — only after the wallet/payment risk review:
    Agentic Wallet identity, OKX Payment SDK verifier, A2A escrow deliverables.

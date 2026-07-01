@@ -31,6 +31,11 @@ from runeclaw_okx.okx_data import (
     assert_okx_readonly,
     okx_skill_instances,
 )
+from runeclaw_okx.okx_dex import (
+    DEX_DATA_TOOLS,
+    assert_dex_readonly,
+    okx_dex_skill_instances,
+)
 
 # Skills that can place/confirm trades or mutate live/breaker state. An extended
 # tool must NEVER map to one of these (asserted at build + in tests).
@@ -217,8 +222,9 @@ def assert_extended_readonly() -> None:
             raise RuntimeError(
                 f"Extended tool '{name}' maps to non-allow-listed skill '{skill}'"
             )
-    # The OKX-data and attestation tools are read-only by construction; validate too.
+    # The OKX-data / DEX / attestation tools are read-only by construction; validate too.
     assert_okx_readonly()
+    assert_dex_readonly()
     assert_attest_readonly()
 
 
@@ -245,8 +251,13 @@ def build_extended_server(rc_server: Any | None = None) -> Any:
             for t in catalogue
         )
 
-    defs = _to_defs(EXTENDED_TOOLS) + _to_defs(OKX_DATA_TOOLS) + _to_defs(ATTEST_TOOLS)
-    okx_skills = okx_skill_instances()
+    defs = (
+        _to_defs(EXTENDED_TOOLS)
+        + _to_defs(OKX_DATA_TOOLS)
+        + _to_defs(DEX_DATA_TOOLS)
+        + _to_defs(ATTEST_TOOLS)
+    )
+    okx_skills = okx_skill_instances() + okx_dex_skill_instances()
     MCPResponse = __import__("bot.mcp.server", fromlist=["MCPResponse"]).MCPResponse
 
     class _ExtendedRuneClawMCPServer(RuneClawMCPServer):

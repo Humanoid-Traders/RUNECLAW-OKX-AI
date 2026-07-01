@@ -41,6 +41,7 @@ _PER_TOOL_PRICE = {
     # OKX-data tools fetch + compute; price them like the heavier analyses.
     "runeclaw_okx_quant": "0.05",
     "runeclaw_okx_backtest": "0.05",
+    "runeclaw_dex_quant": "0.05",
     # Verifiable-analysis tier: a signed receipt carries a small premium.
     "runeclaw_signed": "0.02",
 }
@@ -61,6 +62,7 @@ def build_manifest() -> dict:
     from runeclaw_okx.attestation import ATTEST_TOOLS
     from runeclaw_okx.extended_server import EXTENDED_TOOLS, assert_extended_readonly
     from runeclaw_okx.okx_data import OKX_DATA_TOOLS
+    from runeclaw_okx.okx_dex import DEX_DATA_TOOLS
 
     assert_extended_readonly()
 
@@ -79,6 +81,7 @@ def build_manifest() -> dict:
         tuple(TOOL_CATALOGUE)
         + _to_defs(EXTENDED_TOOLS)
         + _to_defs(OKX_DATA_TOOLS)
+        + _to_defs(DEX_DATA_TOOLS)
         + _to_defs(ATTEST_TOOLS)
     )
 
