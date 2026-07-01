@@ -106,9 +106,28 @@ recipe. Any Ed25519 library verifies it — no RUNECLAW code needed — which is
 what an OKB-staked Evaluator needs to adjudicate "did RUNECLAW really return this?".
 The signing key is per-deployment (`MCP_ATTEST_PRIVATE_KEY`), ephemeral if unset.
 
+## Live monetization — seller gate built (x402)
+
+`runeclaw_okx/payments.py` implements the **seller side** of pay-per-call: an unpaid
+`/mcp` request returns **HTTP 402** with an x402 `accepts` challenge; a retry carrying
+a Broker-signed **`X-PAYMENT` receipt** is Ed25519-verified (recipient / asset /
+network / amount / expiry / single-use nonce) before the call is served. Off by
+default; enabled fail-closed via `MCP_REQUIRE_PAYMENT` + `OKX_PAY_RECIPIENT` +
+`OKX_PAY_BROKER_PUBKEY`. Verified live end-to-end (402 → challenge, valid receipt →
+served, replay → 402).
+
+By design this code **never holds funds, signs a payment, or touches a wallet** — it
+only verifies a settlement the operator's own wallet/Broker already made. So the
+remaining live pieces are the operator's, not code: a **receiving wallet address**, the
+**OKX Broker receipt-signing key**, and confirming the exact receipt envelope against
+OKX's (non-public) APP/Payment-SDK spec. Registering a paid listing is the
+wallet/payment surface the plan reserved for a risk review (§5/§7).
+
 ## Suggested next steps (in order)
 
 1. **Live-verify the DEX leg** once an OKX Developer-Portal key is available (confirm
    the candles endpoint/version and the signing handshake against the real API).
-2. **Live monetization (B/D/F)** — only after the wallet/payment risk review:
-   Agentic Wallet identity, OKX Payment SDK verifier, A2A escrow deliverables.
+2. **Confirm the payment receipt envelope** against OKX's APP/Broker spec and supply
+   the operator's receiving wallet + Broker key to flip the paid endpoint live.
+3. **A2A escrow deliverables (D)** — custom backtests / strategy red-teaming priced
+   per-deliverable via X Layer escrow (needs the wallet surface from the risk review).

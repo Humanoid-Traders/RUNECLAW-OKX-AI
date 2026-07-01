@@ -159,12 +159,15 @@ class PaymentASGIMiddleware:
         if scope.get("type") != "http":
             await self._app(scope, receive, send)
             return
+        path = scope.get("path", "")
         headers = {k.lower(): v for k, v in scope.get("headers", [])}
-        paid, reason = await self._verifier.verify(path=scope.get("path", ""), headers=headers)
+        paid, reason = await self._verifier.verify(path=path, headers=headers)
         if not paid:
-            body = json.dumps(
-                {"status": "error", "result": reason or "Payment required."}
-            ).encode()
+            payload: dict[str, Any] = {"status": "error", "result": reason or "Payment required."}
+            # Attach the x402 payment challenge when the verifier can describe terms.
+            challenge = getattr(self._verifier, "challenge", None)
+            if callable(challenge):
+                payload.update(challenge(path))
             await send(
                 {
                     "type": "http.response.start",
@@ -172,7 +175,7 @@ class PaymentASGIMiddleware:
                     "headers": [(b"content-type", b"application/json")],
                 }
             )
-            await send({"type": "http.response.body", "body": body})
+            await send({"type": "http.response.body", "body": json.dumps(payload).encode()})
             return
         await self._app(scope, receive, send)
 
@@ -227,10 +230,12 @@ def build_http_app(
     if require_payment is None:
         require_payment = _payment_required_default()
     if require_payment and payment_verifier is None:
-        raise RuntimeError(
-            "MCP_REQUIRE_PAYMENT is set but no PaymentVerifier is configured. "
-            "Wire the OKX Payment SDK verifier before serving a paid A2MCP endpoint."
-        )
+        # Fail-closed: build the signed-receipt verifier from the environment. If the
+        # payment config (recipient + broker key) is incomplete this raises rather
+        # than serve a paid listing for free.
+        from runeclaw_okx.payments import SignedReceiptVerifier
+
+        payment_verifier = SignedReceiptVerifier.from_env()
 
     server, _rc = build_server(rc_server)  # runs guards; constructs RuneClawMCPServer
     token = _resolve_auth_token()
